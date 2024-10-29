@@ -8,3 +8,5 @@ package and deploy Shopware 6 to production shops.
 Please refer to the
 [documentation](https://developer.shopware.com/docs/guides/installation/template)
 for instructions on how to use this template.
+
+docker compose up -d --build --pull always
