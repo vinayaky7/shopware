@@ -18,3 +18,5 @@ COPY --chown=82:82 setup.sh /setup.sh
 
 # copy assets from build stage
 COPY --from=build --chown=82 --link /src /var/www/html
+
+
