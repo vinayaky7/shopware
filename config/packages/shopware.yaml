@@ -1,0 +1,10 @@
+# Using the webupdater will overwrite this file. Create a second file z-shopware.yaml to override the config
+
+shopware:
+    auto_update:
+        enabled: false
+    admin_worker:
+        enable_admin_worker: false
+    api:
+        jwt_key:
+            use_app_secret: true
