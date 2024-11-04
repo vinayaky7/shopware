@@ -1,0 +1,1614 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: cascade clouformation deploy
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: "production"
+    AllowedValues:
+      - production
+
+  VpcCIDR:
+    Description: IP range for the VPC (CIDR notation)
+    Type: String
+    Default: 10.0.0.0/16
+  PublicSubnet1CIDR:
+    Description: IP range for the public subnet in the first Availability Zone
+    Type: String
+    Default: 10.0.1.0/24
+  PublicSubnet2CIDR:
+    Description: IP range for the public subnet in the second Availability Zone
+    Type: String
+    Default: 10.0.2.0/24
+  PrivateSubnet1CIDR:
+    Description: IP range for the private subnet in the first Availability Zone
+    Type: String
+    Default: 10.0.3.0/24
+  PrivateSubnet2CIDR:
+    Description: IP range for the private subnet in the second Availability Zone
+    Type: String
+    Default: 10.0.4.0/24
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  DBName:
+    Default: myDatabase
+    Description: MySQL database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBUser:
+    NoEcho: 'true'
+    Description: Username for MySQL database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: Password for MySQL database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+  DBAllocatedStorage:
+    Default: '20'
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: '5'
+    MaxValue: '1024'
+    ConstraintDescription: must be between 5 and 1024Gb.
+  DBEngine:
+    Description: The database Engine type
+    Type: String
+    Default: mysql
+    AllowedValues:
+      - aurora-mysql
+      - aurora-postgresql
+      - custom-oracle-ee
+      - custom-oracle-ee-cdb
+      - custom-sqlserver-ee
+      - custom-sqlserver-se
+      - custom-sqlserver-web
+      - db2-ae
+      - db2-se
+      - mariadb
+      - mysql
+      - oracle-ee
+      - oracle-ee-cdb
+      - oracle-se2
+      - oracle-se2-cdb
+      - postgres
+      - sqlserver-ee
+      - sqlserver-se
+      - sqlserver-ex
+      - sqlserver-web
+  DBInstanceClass:
+    Description: The database instance type
+    Type: String
+    Default: db.m6g.large
+    AllowedValues:
+      - db.m7g.16xlarge
+      - db.m7g.12xlarge
+      - db.m7g.8xlarge
+      - db.m7g.4xlarge
+      - db.m7g.2xlarge
+      - db.m7g.xlarge
+      - db.m7g.large
+      - db.m6g.16xlarge
+      - db.m6g.12xlarge
+      - db.m6g.8xlarge
+      - db.m6g.4xlarge
+      - db.m6g.2xlarge
+      - db.m6g.xlarge
+      - db.m6g.large
+      - db.m6gd.16xlarge
+      - db.m6gd.12xlarge
+      - db.m6gd.8xlarge
+      - db.m6gd.4xlarge
+      - db.m6gd.2xlarge
+      - db.m6gd.xlarge
+      - db.m6gd.large
+      - db.m6id.32xlarge
+      - db.m6id.24xlarge
+      - db.m6id.16xlarge
+      - db.m6id.12xlarge
+      - db.m6id.8xlarge
+      - db.m6id.4xlarge
+      - db.m6id.2xlarge
+      - db.m6id.xlarge
+      - db.m6id.large
+      - db.m6idn.32xlarge
+      - db.m6idn.24xlarge
+      - db.m6idn.16xlarge
+      - db.m6idn.12xlarge
+      - db.m6idn.8xlarge
+      - db.m6idn.4xlarge
+      - db.m6idn.2xlarge
+      - db.m6idn.xlarge
+      - db.m6idn.large
+      - db.m6in.32xlarge
+      - db.m6in.24xlarge
+      - db.m6in.16xlarge
+      - db.m6in.12xlarge
+      - db.m6in.8xlarge
+      - db.m6in.4xlarge
+      - db.m6in.2xlarge
+      - db.m6in.xlarge
+      - db.m6in.large
+      - db.m6i.32xlarge
+      - db.m6i.24xlarge
+      - db.m6i.16xlarge
+      - db.m6i.12xlarge
+      - db.m6i.8xlarge
+      - db.m6i.4xlarge
+      - db.m6i.2xlarge
+      - db.m6i.xlarge
+      - db.m6i.large
+      - db.m5d.24xlarge
+      - db.m5d.16xlarge
+      - db.m5d.12xlarge
+      - db.m5d.8xlarge
+      - db.m5d.4xlarge
+      - db.m5d.2xlarge
+      - db.m5d.xlarge
+      - db.m5d.large
+      - db.m5.24xlarge
+      - db.m5.16xlarge
+      - db.m5.12xlarge
+      - db.m5.8xlarge
+      - db.m5.4xlarge
+      - db.m5.2xlarge
+      - db.m5.xlarge
+      - db.m5.large
+      - db.m4.16xlarge
+      - db.m4.10xlarge
+      - db.m4.4xlarge
+      - db.m4.2xlarge
+      - db.m4.xlarge
+      - db.m4.large
+      - db.m3.2xlarge
+      - db.m3.xlarge
+      - db.m3.large
+      - db.m3.medium
+      - db.z1d.12xlarge
+      - db.z1d.6xlarge
+      - db.z1d.3xlarge
+      - db.z1d.2xlarge
+      - db.z1d.xlarge
+      - db.z1d.large
+      - db.x2g.16xlarge
+      - db.x2g.12xlarge
+      - db.x2g.8xlarge
+      - db.x2g.4xlarge
+      - db.x2g.2xlarge
+      - db.x2g.xlarge
+      - db.x2g.large
+      - db.x2idn.32xlarge
+      - db.x2idn.24xlarge
+      - db.x2idn.16xlarge
+      - db.x2iedn.32xlarge
+      - db.x2iedn.24xlarge
+      - db.x2iedn.16xlarge
+      - db.x2iedn.8xlarge
+      - db.x2iedn.4xlarge
+      - db.x2iedn.2xlarge
+      - db.x2iedn.xlarge
+      - db.x2iezn.8xlarge
+      - db.x2iezn.6xlarge
+      - db.x2iezn.4xlarge
+      - db.x2iezn.2xlarge
+      - db.x1e.32xlarge
+      - db.x1e.16xlarge
+      - db.x1e.8xlarge
+      - db.x1e.4xlarge
+      - db.x1e.2xlarge
+      - db.x1e.xlarge
+      - db.x1.32xlarge
+      - db.x1.16xlarge
+      - db.r7g.16xlarge
+      - db.r7g.12xlarge
+      - db.r7g.8xlarge
+      - db.r7g.4xlarge
+      - db.r7g.2xlarge
+      - db.r7g.xlarge
+      - db.r7g.large
+      - db.r6g.16xlarge
+      - db.r6g.12xlarge
+      - db.r6g.8xlarge
+      - db.r6g.4xlarge
+      - db.r6g.2xlarge
+      - db.r6g.xlarge
+      - db.r6g.large
+      - db.r6gd.16xlarge
+      - db.r6gd.12xlarge
+      - db.r6gd.8xlarge
+      - db.r6gd.4xlarge
+      - db.r6gd.2xlarge
+      - db.r6gd.xlarge
+      - db.r6gd.large
+      - db.r6id.32xlarge
+      - db.r6id.24xlarge
+      - db.r6id.16xlarge
+      - db.r6id.12xlarge
+      - db.r6id.8xlarge
+      - db.r6id.4xlarge
+      - db.r6id.2xlarge
+      - db.r6id.xlarge
+      - db.r6id.large
+      - db.r6idn.32xlarge
+      - db.r6idn.24xlarge
+      - db.r6idn.16xlarge
+      - db.r6idn.12xlarge
+      - db.r6idn.8xlarge
+      - db.r6idn.4xlarge
+      - db.r6idn.2xlarge
+      - db.r6idn.xlarge
+      - db.r6in.32xlarge
+      - db.r6in.24xlarge
+      - db.r6in.16xlarge
+      - db.r6in.12xlarge
+      - db.r6in.8xlarge
+      - db.r6in.4xlarge
+      - db.r6in.2xlarge
+      - db.r6in.xlarge
+      - db.r6in.large
+      - db.r6i.32xlarge
+      - db.r6i.24xlarge
+      - db.r6i.16xlarge
+      - db.r6i.12xlarge
+      - db.r6i.8xlarge
+      - db.r6i.4xlarge
+      - db.r6i.2xlarge
+      - db.r6i.xlarge
+      - db.r6i.large
+      - db.r5d.24xlarge
+      - db.r5d.16xlarge
+      - db.r5d.12xlarge
+      - db.r5d.8xlarge
+      - db.r5d.4xlarge
+      - db.r5d.2xlarge
+      - db.r5d.xlarge
+      - db.r5d.large
+      - db.r5b.8xlarge.tpc2.mem3x
+      - db.r5b.6xlarge.tpc2.mem4x
+      - db.r5b.4xlarge.tpc2.mem4x
+      - db.r5b.4xlarge.tpc2.mem3x
+      - db.r5b.4xlarge.tpc2.mem2x
+      - db.r5b.2xlarge.tpc2.mem8x
+      - db.r5b.2xlarge.tpc2.mem4x
+      - db.r5b.2xlarge.tpc1.mem2x
+      - db.r5b.xlarge.tpc2.mem4x
+      - db.r5b.xlarge.tpc2.mem2x
+      - db.r5b.large.tpc1.mem2x
+      - db.r5b.24xlarge
+      - db.r5b.16xlarge
+      - db.r5b.12xlarge
+      - db.r5b.8xlarge
+      - db.r5b.4xlarge
+      - db.r5b.2xlarge
+      - db.r5b.xlarge
+      - db.r5b.large
+      - db.r5.12xlarge.tpc2.mem2x
+      - db.r5.8xlarge.tpc2.mem3x
+      - db.r5.6xlarge.tpc2.mem4x
+      - db.r5.4xlarge.tpc2.mem4x
+      - db.r5.4xlarge.tpc2.mem3x
+      - db.r5.4xlarge.tpc2.mem2x
+      - db.r5.2xlarge.tpc2.mem8x
+      - db.r5.2xlarge.tpc2.mem4x
+      - db.r5.2xlarge.tpc1.mem2x
+      - db.r5.xlarge.tpc2.mem4x
+      - db.r5.xlarge.tpc2.mem2x
+      - db.r5.large.tpc1.mem2x
+      - db.r5.24xlarge
+      - db.r5.16xlarge
+      - db.r5.12xlarge
+      - db.r5.8xlarge
+      - db.r5.4xlarge
+      - db.r5.2xlarge
+      - db.r5.xlarge
+      - db.r5.large
+      - db.r4.16xlarge
+      - db.r4.8xlarge
+      - db.r4.4xlarge
+      - db.r4.2xlarge
+      - db.r4.xlarge
+      - db.r4.large
+      - db.r3.8xlarge**
+      - db.r3.4xlarge
+      - db.r3.2xlarge
+      - db.r3.xlarge
+      - db.r3.large
+      - db.c6gd.16xlarge
+      - db.c6gd.12xlarge
+      - db.c6gd.8xlarge
+      - db.c6gd.4xlarge
+      - db.c6gd.2xlarge
+      - db.c6gd.xlarge
+      - db.c6gd.large
+      - db.c6gd.medium
+      - db.t4g.2xlarge
+      - db.t4g.xlarge
+      - db.t4g.large
+      - db.t4g.medium
+      - db.t4g.small
+      - db.t4g.micro
+      - db.t3.2xlarge
+      - db.t3.xlarge
+      - db.t3.large
+      - db.t3.medium
+      - db.t3.small
+      - db.t3.micro
+      - db.t2.2xlarge
+      - db.t2.xlarge
+      - db.t2.large
+      - db.t2.medium
+      - db.t2.small
+      - db.t2.micro
+      - db.r3.8xlarge
+      - db.x2iezn.12xlarge
+      - db.m7g.2xlarge*
+      - db.m7g.xlarge*
+      - db.m7g.large*
+      - db.m6g.2xlarge*
+      - db.m6g.xlarge*
+      - db.m6g.large*
+      - db.m6id.4xlarge*
+      - db.m6id.2xlarge*
+      - db.m6id.xlarge*
+      - db.m6id.large*
+      - db.m6idn.4xlarge*
+      - db.m6idn.2xlarge*
+      - db.m6idn.xlarge*
+      - db.m6idn.large*
+      - db.m6in.4xlarge*
+      - db.m6in.2xlarge*
+      - db.m6in.xlarge*
+      - db.m6in.large*
+      - db.m6i.4xlarge*
+      - db.m6i.2xlarge*
+      - db.m6i.xlarge*
+      - db.m6i.large*
+      - db.m5d.2xlarge*
+      - db.m5d.xlarge*
+      - db.m5d.large*
+      - db.m5.2xlarge*
+      - db.m5.xlarge*
+      - db.m5.large*
+      - db.m1.xlarge
+      - db.m1.large
+      - db.m1.medium
+      - db.m1.small
+      - db.z1d.xlarge*
+      - db.z1d.large*
+      - db.r7g.2xlarge*
+      - db.r7g.xlarge*
+      - db.r7g.large*
+      - db.r6g.2xlarge*
+      - db.r6g.xlarge*
+      - db.r6g.large*
+      - db.r6id.4xlarge*
+      - db.r6id.2xlarge*
+      - db.r6id.xlarge*
+      - db.r6id.large*
+      - db.r6idn.4xlarge*
+      - db.r6idn.2xlarge*
+      - db.r6idn.xlarge*
+      - db.r6idn.large*
+      - db.r6in.4xlarge*
+      - db.r6in.2xlarge*
+      - db.r6in.xlarge*
+      - db.r6in.large*
+      - db.r6i.4xlarge*
+      - db.r6i.2xlarge*
+      - db.r6i.xlarge*
+      - db.r6i.large*
+      - db.r5d.2xlarge*
+      - db.r5d.xlarge*
+      - db.r5d.large*
+      - db.r5b.2xlarge*
+      - db.r5b.xlarge*
+      - db.r5b.large*
+      - db.r5.2xlarge*
+      - db.r5.xlarge*
+      - db.r5.large*
+      - db.t4g.2xlarge*
+      - db.t4g.xlarge*
+      - db.t4g.large*
+      - db.t4g.medium*
+      - db.t4g.small*
+      - db.t4g.micro*
+      - db.t3.2xlarge*
+      - db.t3.xlarge*
+      - db.t3.large*
+      - db.t3.micro*
+      - db.t3.medium*
+      - db.t3.small*
+
+      # Graviton3 DB Instances
+      - db.m7g.16xlarge
+      - db.m7g.12xlarge
+      - db.m7g.8xlarge
+      - db.m7g.4xlarge
+      - db.m7g.2xlarge
+      - db.m7g.xlarge
+      - db.m7g.large
+    
+      # Graviton2 DB Instances
+      - db.m6g.16xlarge
+      - db.m6g.12xlarge
+      - db.m6g.8xlarge
+      - db.m6g.4xlarge
+      - db.m6g.2xlarge
+      - db.m6g.xlarge
+      - db.m6g.large
+      - db.r6g.large
+      - db.r6g.xlarge
+      - db.r6g.2xlarge
+      - db.r6g.4xlarge
+      - db.r6g.8xlarge
+      - db.r6g.12xlarge
+      - db.r6g.16xlarge
+
+    ConstraintDescription: must select a valid database instance type.
+  MultiAZDatabase:
+    Default: 'false'
+    Description: Create a Multi-AZ MySQL Amazon RDS database instance
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    ConstraintDescription: must be either true or false.
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t4g.medium
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m1.xlarge
+      - m2.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hi1.4xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
+      - cg1.4xlarge
+
+      # General Purpose - Graviton2
+      - t4g.nano
+      - t4g.micro
+      - t4g.small
+      - t4g.medium
+      - t4g.large
+      - m6g.medium
+      - m6g.large
+      - m6g.xlarge
+      - m6g.2xlarge
+      - m6g.4xlarge
+      - m6g.8xlarge
+      - m6g.12xlarge
+      - m6g.16xlarge
+      - m7g.medium
+      - m7g.large
+      - m7g.xlarge
+      - m7g.2xlarge
+      - m7g.4xlarge
+      - m7g.8xlarge
+      - m7g.12xlarge
+      - m7g.16xlarge
+    
+      # Compute Optimized - Graviton2
+      - c6g.medium
+      - c6g.large
+      - c6g.xlarge
+      - c6g.2xlarge
+      - c6g.4xlarge
+      - c6g.8xlarge
+      - c6g.12xlarge
+      - c6g.16xlarge
+      - c7g.medium
+      - c7g.large
+      - c7g.xlarge
+      - c7g.2xlarge
+      - c7g.4xlarge
+      - c7g.8xlarge
+      - c7g.12xlarge
+      - c7g.16xlarge
+
+      # Memory Optimized - Graviton2
+      - r6g.medium
+      - r6g.large
+      - r6g.xlarge
+      - r6g.2xlarge
+      - r6g.4xlarge
+      - r6g.8xlarge
+      - r6g.12xlarge
+      - r6g.16xlarge
+      - r7g.medium
+      - r7g.large
+      - r7g.xlarge
+      - r7g.2xlarge
+      - r7g.4xlarge
+      - r7g.8xlarge
+      - r7g.12xlarge
+      - r7g.16xlarge
+
+      # Storage Optimized - Graviton2
+      - is4gen.medium
+      - is4gen.large
+      - is4gen.xlarge
+      - is4gen.2xlarge
+      - is4gen.4xlarge
+      - is4gen.8xlarge
+      - im4gn.large
+      - im4gn.xlarge
+      - im4gn.2xlarge
+      - im4gn.4xlarge
+      - im4gn.8xlarge
+      - im4gn.16xlarge
+
+      # High Performance - Graviton3
+      - hpc6g
+
+      # General Purpose - Graviton3
+      - m7g.medium
+      - m7g.large
+      - m7g.xlarge
+      - m7g.2xlarge
+      - m7g.4xlarge
+      - m7g.8xlarge
+      - m7g.12xlarge
+      - m7g.16xlarge
+
+      # Compute Optimized - Graviton3
+      - c7g.medium
+      - c7g.large
+      - c7g.xlarge
+      - c7g.2xlarge
+      - c7g.4xlarge
+      - c7g.8xlarge
+      - c7g.12xlarge
+      - c7g.16xlarge
+
+      # Memory Optimized - Graviton3
+      - r7g.medium
+      - r7g.large
+      - r7g.xlarge
+      - r7g.2xlarge
+      - r7g.4xlarge
+      - r7g.8xlarge
+      - r7g.12xlarge
+      - r7g.16xlarge
+
+    ConstraintDescription: must be a valid EC2 instance type.
+  SSHLocation:
+    Description: ' The IP address range that can be used to SSH to the EC2 instances'
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+Mappings:
+  AWSInstanceType2Arch:
+    c1.medium:
+      Arch: HVM64
+    c1.xlarge:
+      Arch: HVM64
+    c3.2xlarge:
+      Arch: HVM64
+    c3.4xlarge:
+      Arch: HVM64
+    c3.8xlarge:
+      Arch: HVM64
+    c3.large:
+      Arch: HVM64
+    c3.xlarge:
+      Arch: HVM64
+    c4.2xlarge:
+      Arch: HVM64
+    c4.4xlarge:
+      Arch: HVM64
+    c4.8xlarge:
+      Arch: HVM64
+    c4.large:
+      Arch: HVM64
+    c4.xlarge:
+      Arch: HVM64
+    cc2.8xlarge:
+      Arch: HVM64
+    cr1.8xlarge:
+      Arch: HVM64
+    d2.2xlarge:
+      Arch: HVM64
+    d2.4xlarge:
+      Arch: HVM64
+    d2.8xlarge:
+      Arch: HVM64
+    d2.xlarge:
+      Arch: HVM64
+    g2.2xlarge:
+      Arch: HVMG2
+    g2.8xlarge:
+      Arch: HVMG2
+    hi1.4xlarge:
+      Arch: HVM64
+    hs1.8xlarge:
+      Arch: HVM64
+    i2.2xlarge:
+      Arch: HVM64
+    i2.4xlarge:
+      Arch: HVM64
+    i2.8xlarge:
+      Arch: HVM64
+    i2.xlarge:
+      Arch: HVM64
+    m1.large:
+      Arch: HVM64
+    m1.medium:
+      Arch: HVM64
+    m1.small:
+      Arch: HVM64
+    m1.xlarge:
+      Arch: HVM64
+    m2.2xlarge:
+      Arch: HVM64
+    m2.4xlarge:
+      Arch: HVM64
+    m2.xlarge:
+      Arch: HVM64
+    m3.2xlarge:
+      Arch: HVM64
+    m3.large:
+      Arch: HVM64
+    m3.medium:
+      Arch: HVM64
+    m3.xlarge:
+      Arch: HVM64
+    m4.10xlarge:
+      Arch: HVM64
+    m4.2xlarge:
+      Arch: HVM64
+    m4.4xlarge:
+      Arch: HVM64
+    m4.large:
+      Arch: HVM64
+    m4.xlarge:
+      Arch: HVM64
+    r3.2xlarge:
+      Arch: HVM64
+    r3.4xlarge:
+      Arch: HVM64
+    r3.8xlarge:
+      Arch: HVM64
+    r3.large:
+      Arch: HVM64
+    r3.xlarge:
+      Arch: HVM64
+    t1.micro:
+      Arch: HVM64
+    t2.large:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+    t2.nano:
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+
+    # Graviton2 - General Purpose
+    t4g.nano:
+      Arch: ARM64
+    t4g.micro:
+      Arch: ARM64
+    t4g.small:
+      Arch: ARM64
+    t4g.medium:
+      Arch: ARM64
+    t4g.large:
+      Arch: ARM64
+    m6g.medium:
+      Arch: ARM64
+    m6g.large:
+      Arch: ARM64
+    m6g.xlarge:
+      Arch: ARM64
+    m6g.2xlarge:
+      Arch: ARM64
+    m6g.4xlarge:
+      Arch: ARM64
+    m6g.8xlarge:
+      Arch: ARM64
+    m6g.12xlarge:
+      Arch: ARM64
+    m6g.16xlarge:
+      Arch: ARM64
+
+    # Graviton2 - Compute Optimized
+    c6g.medium:
+      Arch: ARM64
+    c6g.large:
+      Arch: ARM64
+    c6g.xlarge:
+      Arch: ARM64
+    c6g.2xlarge:
+      Arch: ARM64
+    c6g.4xlarge:
+      Arch: ARM64
+    c6g.8xlarge:
+      Arch: ARM64
+    c6g.12xlarge:
+      Arch: ARM64
+    c6g.16xlarge:
+      Arch: ARM64
+
+    # Graviton2 - Memory Optimized
+    r6g.medium:
+      Arch: ARM64
+    r6g.large:
+      Arch: ARM64
+    r6g.xlarge:
+      Arch: ARM64
+    r6g.2xlarge:
+      Arch: ARM64
+    r6g.4xlarge:
+      Arch: ARM64
+    r6g.8xlarge:
+      Arch: ARM64
+    r6g.12xlarge:
+      Arch: ARM64
+    r6g.16xlarge:
+      Arch: ARM64
+
+    # Graviton3 - General Purpose
+    m7g.medium:
+      Arch: ARM64
+    m7g.large:
+      Arch: ARM64
+    m7g.xlarge:
+      Arch: ARM64
+    m7g.2xlarge:
+      Arch: ARM64
+    m7g.4xlarge:
+      Arch: ARM64
+    m7g.8xlarge:
+      Arch: ARM64
+    m7g.12xlarge:
+      Arch: ARM64
+    m7g.16xlarge:
+      Arch: ARM64
+
+    # Graviton3 - Compute Optimized
+    c7g.medium:
+      Arch: ARM64
+    c7g.large:
+      Arch: ARM64
+    c7g.xlarge:
+      Arch: ARM64
+    c7g.2xlarge:
+      Arch: ARM64
+    c7g.4xlarge:
+      Arch: ARM64
+    c7g.8xlarge:
+      Arch: ARM64
+    c7g.12xlarge:
+      Arch: ARM64
+    c7g.16xlarge:
+      Arch: ARM64
+
+    # Graviton3 - Memory Optimized
+    r7g.medium:
+      Arch: ARM64
+    r7g.large:
+      Arch: ARM64
+    r7g.xlarge:
+      Arch: ARM64
+    r7g.2xlarge:
+      Arch: ARM64
+    r7g.4xlarge:
+      Arch: ARM64
+    r7g.8xlarge:
+      Arch: ARM64
+    r7g.12xlarge:
+      Arch: ARM64
+    r7g.16xlarge:
+      Arch: ARM64
+
+    # Storage Optimized Graviton2
+    is4gen.medium:
+      Arch: ARM64
+    is4gen.large:
+      Arch: ARM64
+    is4gen.xlarge:
+      Arch: ARM64
+    is4gen.2xlarge:
+      Arch: ARM64
+    is4gen.4xlarge:
+      Arch: ARM64
+    is4gen.8xlarge:
+      Arch: ARM64
+    im4gn.large:
+      Arch: ARM64
+    im4gn.xlarge:
+      Arch: ARM64
+    im4gn.2xlarge:
+      Arch: ARM64
+    im4gn.4xlarge:
+      Arch: ARM64
+    im4gn.8xlarge:
+      Arch: ARM64
+    im4gn.16xlarge:
+      Arch: ARM64
+
+    # High Performance Computing Graviton2
+    hpc6g:
+      Arch: ARM64
+  
+  AWSInstanceType2NATArch:
+    c1.medium:
+      Arch: NATHVM64
+    c1.xlarge:
+      Arch: NATHVM64
+    c3.2xlarge:
+      Arch: NATHVM64
+    c3.4xlarge:
+      Arch: NATHVM64
+    c3.8xlarge:
+      Arch: NATHVM64
+    c3.large:
+      Arch: NATHVM64
+    c3.xlarge:
+      Arch: NATHVM64
+    c4.2xlarge:
+      Arch: NATHVM64
+    c4.4xlarge:
+      Arch: NATHVM64
+    c4.8xlarge:
+      Arch: NATHVM64
+    c4.large:
+      Arch: NATHVM64
+    c4.xlarge:
+      Arch: NATHVM64
+    cc2.8xlarge:
+      Arch: NATHVM64
+    cr1.8xlarge:
+      Arch: NATHVM64
+    d2.2xlarge:
+      Arch: NATHVM64
+    d2.4xlarge:
+      Arch: NATHVM64
+    d2.8xlarge:
+      Arch: NATHVM64
+    d2.xlarge:
+      Arch: NATHVM64
+    g2.2xlarge:
+      Arch: NATHVMG2
+    g2.8xlarge:
+      Arch: NATHVMG2
+    hi1.4xlarge:
+      Arch: NATHVM64
+    hs1.8xlarge:
+      Arch: NATHVM64
+    i2.2xlarge:
+      Arch: NATHVM64
+    i2.4xlarge:
+      Arch: NATHVM64
+    i2.8xlarge:
+      Arch: NATHVM64
+    i2.xlarge:
+      Arch: NATHVM64
+    m1.large:
+      Arch: NATHVM64
+    m1.medium:
+      Arch: NATHVM64
+    m1.small:
+      Arch: NATHVM64
+    m1.xlarge:
+      Arch: NATHVM64
+    m2.2xlarge:
+      Arch: NATHVM64
+    m2.4xlarge:
+      Arch: NATHVM64
+    m2.xlarge:
+      Arch: NATHVM64
+    m3.2xlarge:
+      Arch: NATHVM64
+    m3.large:
+      Arch: NATHVM64
+    m3.medium:
+      Arch: NATHVM64
+    m3.xlarge:
+      Arch: NATHVM64
+    m4.10xlarge:
+      Arch: NATHVM64
+    m4.2xlarge:
+      Arch: NATHVM64
+    m4.4xlarge:
+      Arch: NATHVM64
+    m4.large:
+      Arch: NATHVM64
+    m4.xlarge:
+      Arch: NATHVM64
+    r3.2xlarge:
+      Arch: NATHVM64
+    r3.4xlarge:
+      Arch: NATHVM64
+    r3.8xlarge:
+      Arch: NATHVM64
+    r3.large:
+      Arch: NATHVM64
+    r3.xlarge:
+      Arch: NATHVM64
+    t1.micro:
+      Arch: NATHVM64
+    t2.large:
+      Arch: NATHVM64
+    t2.medium:
+      Arch: NATHVM64
+    t2.micro:
+      Arch: NATHVM64
+    t2.nano:
+      Arch: NATHVM64
+    t2.small:
+      Arch: NATHVM64
+    
+    # Graviton2 (64-bit ARM)
+    t4g.nano:
+      Arch: NATHVMARM64
+    t4g.micro:
+      Arch: NATHVMARM64
+    t4g.small:
+      Arch: NATHVMARM64
+    t4g.medium:
+      Arch: NATHVMARM64
+    t4g.large:
+      Arch: NATHVMARM64
+    m6g.medium:
+      Arch: NATHVMARM64
+    m6g.large:
+      Arch: NATHVMARM64
+    m6g.xlarge:
+      Arch: NATHVMARM64
+    m6g.2xlarge:
+      Arch: NATHVMARM64
+    m6g.4xlarge:
+      Arch: NATHVMARM64
+    m6g.8xlarge:
+      Arch: NATHVMARM64
+    m6g.12xlarge:
+      Arch: NATHVMARM64
+    m6g.16xlarge:
+      Arch: NATHVMARM64
+
+    c6g.medium:
+      Arch: NATHVMARM64
+    c6g.large:
+      Arch: NATHVMARM64
+    c6g.xlarge:
+      Arch: NATHVMARM64
+    c6g.2xlarge:
+      Arch: NATHVMARM64
+    c6g.4xlarge:
+      Arch: NATHVMARM64
+    c6g.8xlarge:
+      Arch: NATHVMARM64
+    c6g.12xlarge:
+      Arch: NATHVMARM64
+    c6g.16xlarge:
+      Arch: NATHVMARM64
+
+    r6g.medium:
+      Arch: NATHVMARM64
+    r6g.large:
+      Arch: NATHVMARM64
+    r6g.xlarge:
+      Arch: NATHVMARM64
+    r6g.2xlarge:
+      Arch: NATHVMARM64
+    r6g.4xlarge:
+      Arch: NATHVMARM64
+    r6g.8xlarge:
+      Arch: NATHVMARM64
+    r6g.12xlarge:
+      Arch: NATHVMARM64
+    r6g.16xlarge:
+      Arch: NATHVMARM64
+
+    # Graviton3 (latest 64-bit ARM-based)
+    m7g.medium:
+      Arch: NATHVMARM64
+    m7g.large:
+      Arch: NATHVMARM64
+    m7g.xlarge:
+      Arch: NATHVMARM64
+    m7g.2xlarge:
+      Arch: NATHVMARM64
+    m7g.4xlarge:
+      Arch: NATHVMARM64
+    m7g.8xlarge:
+      Arch: NATHVMARM64
+    m7g.12xlarge:
+      Arch: NATHVMARM64
+    m7g.16xlarge:
+      Arch: NATHVMARM64
+
+    c7g.medium:
+      Arch: NATHVMARM64
+    c7g.large:
+      Arch: NATHVMARM64
+    c7g.xlarge:
+      Arch: NATHVMARM64
+    c7g.2xlarge:
+      Arch: NATHVMARM64
+    c7g.4xlarge:
+      Arch: NATHVMARM64
+    c7g.8xlarge:
+      Arch: NATHVMARM64
+    c7g.12xlarge:
+      Arch: NATHVMARM64
+    c7g.16xlarge:
+      Arch: NATHVMARM64
+
+    r7g.medium:
+      Arch: NATHVMARM64
+    r7g.large:
+      Arch: NATHVMARM64
+    r7g.xlarge:
+      Arch: NATHVMARM64
+    r7g.2xlarge:
+      Arch: NATHVMARM64
+    r7g.4xlarge:
+      Arch: NATHVMARM64
+    r7g.8xlarge:
+      Arch: NATHVMARM64
+    r7g.12xlarge:
+      Arch: NATHVMARM64
+    r7g.16xlarge:
+      Arch: NATHVMARM64
+  AWSRegionArch2AMI:
+    ap-south-2:
+      HVM64: ami-008b9c53bb1dcd29c
+      HVMG2: NOT_SUPPORTED
+    ap-southeast-3:
+      HVM64: ami-065dcca47dde26602
+      HVMG2: NOT_SUPPORTED
+    ap-southeast-4:
+      HVM64: ami-043e25432cf94e107
+      HVMG2: NOT_SUPPORTED
+    il-central-1:
+      HVM64: ami-0054be7d7d9d65a1d
+      HVMG2: NOT_SUPPORTED
+    cn-north-1:
+      HVM64: ami-03f1e08d409b1e5fd
+      HVMG2: NOT_SUPPORTED
+    cn-northwest-1:
+      HVM64: ami-00093746b9a0e272a
+      HVMG2: NOT_SUPPORTED
+    eu-south-1:
+      HVM64: ami-07d048788725b9602
+      HVMG2: NOT_SUPPORTED
+    me-south-1:
+      HVM64: ami-0007de3fdcaba7e44
+      HVMG2: NOT_SUPPORTED
+    me-central-1:
+      HVM64: ami-06ce88defa3fc74ed
+      HVMG2: NOT_SUPPORTED
+    eu-south-2:
+      HVM64: ami-051306f4e885d6de4
+      HVMG2: NOT_SUPPORTED
+    eu-central-2:
+      HVM64: ami-0fcd532574732cb0f
+      HVMG2: NOT_SUPPORTED
+    af-south-1:
+      HVM64: ami-0412806bd0f2cf75f
+      HVMG2: ami-04e2b6412b94e5c4c  # Graviton2
+      HVMG3: ami-02d8bc44f9fb2c91f  # Graviton3
+    ap-east-1:
+      HVM64: ami-0e0a21f8bd5195698
+      HVMG2: ami-0abacf374b6f9975e
+      HVMG3: ami-05c30a614ed98c5ad
+    ap-northeast-1:
+      HVM64: ami-0c3e3e7af817ad732
+      HVMG2: ami-0d9f4ec48208fa836
+      HVMG3: ami-0c3dfc4a076254e1e
+      ARM64: ami-0a6c2c32b7eea4513
+    ap-northeast-2:
+      HVM64: ami-071a42ffa63391c66  
+      HVMG2: ami-024fb58214cfa9fa0
+      HVMG3: ami-01adbd4bc6f70247c
+      ARM64: ami-0b48860f51bc4313e    #ami-01c3c77ac8a3d3c59 #ARM64 Ubuntu 22.04 LTS (Jammy Jellyfish)
+    ap-northeast-3:
+      HVM64: ami-02a371c41f08cc499
+      HVMG2: ami-0d7c87a51b1f5c3a2
+      HVMG3: ami-04a8d439b7fd8c3f5
+    ap-south-1:
+      HVM64: ami-0f4ab3c8db917e421
+      HVMG2: ami-0958e1b37b2cb0b98
+      HVMG3: ami-091df1cfaff6d91cc
+    ap-southeast-1:
+      HVM64: ami-0c3189395e5b39df7
+      HVMG2: ami-04a7949c68d1c3e1f
+      HVMG3: ami-05b3b76123cf51a5d
+      ARM64: ami-0c2e194db11a43cf0
+    ap-southeast-2:
+      HVM64: ami-040d698318c0b1575
+      HVMG2: ami-058cc007e204b4071
+      HVMG3: ami-0165d578ef46971f6
+      ARM64: ami-0e367bda45a38f76e
+    ca-central-1:
+      HVM64: ami-05f40104305a2cdf7
+      HVMG2: ami-0b9c7b2f438b59c1c
+      HVMG3: ami-0d3fe9982994c60a5
+    eu-central-1:
+      HVM64: ami-0f454ec961da9a046
+      HVMG2: ami-0a9cebe027f29f031
+      HVMG3: ami-00f5bc7002d38906e
+      ARM64: ami-0c26ac628f738eecb
+    eu-north-1:
+      HVM64: ami-0e78cd18c67fcf512
+      HVMG2: ami-04654a54ee5c9b4bb
+      HVMG3: ami-01b8e5cf23033093f
+    eu-west-1:
+      HVM64: ami-0db5ca3e5748fb7e2
+      HVMG2: ami-0945d26e0077ae3ca
+      HVMG3: ami-03829228a09c98c6e
+      ARM64: ami-01e074c2b6b99a7c9
+    eu-west-2:
+      HVM64: ami-07baf6b15b7387f24
+      HVMG2: ami-09b36a1a8ae2c50f3
+      HVMG3: ami-0a763758b31611323
+    eu-west-3:
+      HVM64: ami-05a13fbd8aa57eedc
+      HVMG2: ami-03b7454e07cb7a6cb
+      HVMG3: ami-08d3d1269ec2ef3d1
+    sa-east-1:
+      HVM64: ami-07f6e9fce0e888425
+      HVMG2: ami-054e915bbcba39dd0
+      HVMG3: ami-0f48c8af29db6b25a
+      ARM64: ami-01c74e4e241f4d2f9
+
+    us-east-1:
+      HVM64: ami-01989ebfd388ea377
+      HVMG2: ami-02db0250b13d5bf50
+      HVMG3: ami-0df4f8e99b3dd1c8f
+      ARM64: ami-0621e09dc8263acc3  #ARM64 Ubuntu 22.04 LTS (Jammy Jellyfish)
+    us-east-2:
+      HVM64: ami-0de69dde1945155da
+      HVMG2: ami-01b68e1cb91a94a3b
+      HVMG3: ami-0f3d0c69dce582e2d
+    us-west-1:
+      HVM64: ami-08fe20a82dcaa1c92
+      HVMG2: ami-0466587fb08c40726
+      HVMG3: ami-00f8508fc1fe5c31e
+      ARM64: ami-0c1f5edff0fbc11eb
+    us-west-2:
+      HVM64: ami-05848d23360f5edfe
+      HVMG2: ami-00d9fb5f21b0bcdef
+      HVMG3: ami-0c55846c8a58112b6
+      ARM64: ami-07d53713e617a4ef0
+
+Conditions:
+  IsProduction:
+    Fn::Equals:
+      - !Ref EnvironmentName
+      - production
+ 
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes
+          
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet2
+  ApplicationLoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - !GetAtt PublicSubnet1.SubnetId
+        - !GetAtt PublicSubnet2.SubnetId
+    DependsOn:
+      - PublicSubnet1
+      - PublicSubnet2
+  ALBListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: '80'
+      Protocol: HTTP
+  ALBTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: !Ref VPC
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: 'true'
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: '30'
+  
+  DBEC2SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref ShopwareSecurityGroup
+      VpcId: !Ref VPC
+  MySQLDatabasesubnet:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: shopware production database subnet Group
+      DBSubnetGroupName: shopwareprod
+      SubnetIds:
+        - !GetAtt PublicSubnet1.SubnetId
+        - !GetAtt PublicSubnet2.SubnetId
+        - !GetAtt PrivateSubnet2.SubnetId
+        - !GetAtt PrivateSubnet1.SubnetId
+  MySQLDatabase:                                           
+    Type: 'AWS::RDS::DBInstance'
+    Condition: IsProduction                                                
+    Properties:
+      Engine: !Ref DBEngine
+      DBName: !Ref DBName
+      MultiAZ: !Ref MultiAZDatabase
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+    DependsOn: MySQLDatabasesubnet  
+
+  EFSFS:
+    Type: 'AWS::EFS::FileSystem'
+  EFSTM1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFS
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroups:
+      - Ref: "ShopwareSecurityGroup"
+    DependsOn: ShopwareSecurityGroup
+
+  ShopwareSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and HTTP/HTTPS traffic
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref SSHLocation
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '2049'
+          ToPort: '2049'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8000'
+          ToPort: '8000'
+          CidrIp: 0.0.0.0/0          
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroupIds: 
+        - !GetAtt "ShopwareSecurityGroup.GroupId"
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+      KeyName: !Ref KeyName
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: '30'
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo -i
+          
+          apt update -y
+          apt install -y docker.io docker-compose curl git apache2 php php-fpm php-mysql php-xml php-mbstring php-json php-gd
+
+          curl -sS https://getcomposer.org/installer | php
+          mv composer.phar /usr/local/bin/composer
+
+          systemctl start docker
+
+          usermod -aG docker ubuntu
+          mkdir -p  ~/.docker/cli-plugins
+
+          rm -f ~/.docker/cli-plugins/docker-buildx
+          
+          wget https://github.com/docker/buildx/releases/download/v0.18.0-rc2/buildx-v0.18.0-rc2.linux-arm64 -O ~/.docker/cli-plugins/docker-buildx
+          
+          chmod +x ~/.docker/cli-plugins/docker-buildx
+          docker buildx version
+
+          export DOCKER_BUILDKIT=1
+
+          git clone https://github.com/vinayaky7/shopware.git /home/ubuntu/shopware
+
+          # Navigate to the directory and run Docker Compose
+          cd /home/ubuntu/shopware
+          chmod 777 setup.sh
+          apt install composer
+          composer install
+          sleep 10
+
+          DOCKER_BUILDKIT=1 docker-compose up --build
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub my-s3-bucket-${AWS::StackName}  
+      PublicAccessBlockConfiguration:                 
+        BlockPublicAcls: true        
+        BlockPublicPolicy: false     
+        IgnorePublicAcls: true       
+        RestrictPublicBuckets: false 
+
+  IAMPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: cascade-s3-policy  
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: VisualEditor0
+            Effect: Allow
+            Action: 
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:DeleteObject
+              - s3:PutObjectAcl
+            Resource: 
+              - !Sub arn:aws:s3:::my-s3-bucket-${AWS::StackName}/*  
+
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      RoleName: cascade_s3_ec2_role  
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:  
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - !Ref IAMPolicy   
+
+  IAMUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: S3AccessUser
+
+  IAMUserPolicyAttachment:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: cascade-s3-policy-attachment
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:DeleteObject
+              - s3:PutObjectAcl
+            Resource: 
+              - !Sub arn:aws:s3:::my-s3-bucket-${AWS::StackName}/*
+      Users:
+        - !Ref IAMUser   
+
+  UserAccessKey:
+    Type: AWS::IAM::AccessKey
+    DependsOn: IAMUser  
+    Properties:
+      UserName: !Ref IAMUser
+
+Outputs:
+  AccessKey:
+    Description: "Access Key for IAM User"
+    Value: !Ref UserAccessKey
+
+  SecretKey:
+    Description: "Secret Key for IAM User"
+    Value: !GetAtt UserAccessKey.SecretAccessKey
+
+  EFSMountTarget:                                                          
+    Description: Mount target for EFS
+    Value: !GetAtt EFSTM1.IpAddress 
